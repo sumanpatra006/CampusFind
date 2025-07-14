@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/providers/auth-provider';
 import Header from '@/components/header';
-import LoginView from '@/components/login-view';
+import LandingPage from '@/components/landing-page';
 import Dashboard from '@/components/dashboard';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -20,9 +20,8 @@ export default function Home() {
         ) : user ? (
           <Dashboard />
         ) : (
-          <LoginView />
+          <LandingPage />
         )}
       </main>
     </div>
   );
-}
