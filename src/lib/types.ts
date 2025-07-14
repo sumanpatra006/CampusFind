@@ -11,6 +11,7 @@ export interface Item {
   userEmail: string;
   userName?: string;
   timestamp: Timestamp;
+  resolved?: boolean;
 }
 
 export interface Chat {

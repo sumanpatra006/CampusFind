@@ -6,8 +6,9 @@ import ChatRoom from '@/components/chat-room';
 import { useAuth } from '@/providers/auth-provider';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function ChatPage({ params }: { params: { chatId: string } }) {
-  const { chatId } = params;
+// This is a client component, so params are passed as props and not a promise.
+// Destructuring params directly in the function signature is the correct approach.
+export default function ChatPage({ params: { chatId } }: { params: { chatId: string } }) {
   const searchParams = useSearchParams();
   const { user, loading } = useAuth();
   

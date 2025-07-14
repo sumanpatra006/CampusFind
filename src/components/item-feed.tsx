@@ -18,25 +18,42 @@ export default function ItemFeed() {
   const [filter, setFilter] = useState<Filter>('all');
 
   useEffect(() => {
-    let q;
     const itemsCollection = collection(db, 'items');
+    let q;
 
+    // Base query to filter out resolved items
+    const baseQueryConstraints = [where('resolved', '!=', true), orderBy('timestamp', 'desc')];
+    
+    // Add status filter if not 'all'
     if (filter === 'all') {
-      q = query(itemsCollection, orderBy('timestamp', 'desc'));
+      // The Firestore SDK doesn't allow inequality filters on one field and ordering on another without a composite index.
+      // To keep it simple, we filter resolved items on the client for the 'all' view.
+      // For specific filters ('lost'/'found'), we can do it in the query.
+       q = query(collection(db, 'items'), orderBy('timestamp', 'desc'));
     } else {
-      q = query(itemsCollection, where('status', '==', filter), orderBy('timestamp', 'desc'));
+       q = query(itemsCollection, where('status', '==', filter), where('resolved', '!=', true), orderBy('timestamp', 'desc'));
     }
 
     setLoading(true);
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const itemsData = snapshot.docs.map(doc => ({
+      let itemsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
       } as Item));
+      
+      // Client-side filter for 'all' to remove resolved items
+      if (filter === 'all') {
+        itemsData = itemsData.filter(item => !item.resolved);
+      }
+
       setItems(itemsData);
       setLoading(false);
     }, (error) => {
       console.error("Error fetching items:", error);
+      // This might be a missing index error. Log it for the user.
+      if (error.message.includes("requires an index")) {
+        console.error("Firestore index missing. Please create the required composite index in your Firebase console.", error.message);
+      }
       setLoading(false);
     });
 

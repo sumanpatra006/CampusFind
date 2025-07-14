@@ -5,9 +5,12 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from './ui/button';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/providers/auth-provider';
 import Link from 'next/link';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 interface ItemCardProps {
   item: Item;
@@ -15,6 +18,7 @@ interface ItemCardProps {
 
 export default function ItemCard({ item }: ItemCardProps) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const timestamp = item.timestamp?.toDate ? item.timestamp.toDate() : new Date();
 
   // Create a deterministic chat ID from the two user emails and the item ID
@@ -25,6 +29,23 @@ export default function ItemCard({ item }: ItemCardProps) {
   };
 
   const chatId = getChatId();
+
+  const handleMarkAsResolved = async () => {
+    if (!user || user.email !== item.userEmail) {
+        toast({ variant: 'destructive', title: 'Unauthorized', description: 'You can only resolve your own items.' });
+        return;
+    }
+    try {
+        const itemRef = doc(db, 'items', item.id);
+        await updateDoc(itemRef, {
+            resolved: true
+        });
+        toast({ title: 'Success!', description: 'Item has been marked as resolved.' });
+    } catch (error) {
+        console.error("Error resolving item:", error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not resolve the item.' });
+    }
+  }
 
   return (
     <Card className="flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
@@ -65,6 +86,12 @@ export default function ItemCard({ item }: ItemCardProps) {
           <span>Reported by {item.userName || item.userEmail}</span>
           <span>{formatDistanceToNow(timestamp, { addSuffix: true })}</span>
         </div>
+        {user && user.email === item.userEmail && (
+            <Button size="sm" variant="outline" onClick={handleMarkAsResolved}>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Mark as Resolved
+            </Button>
+        )}
         {user && user.email !== item.userEmail && chatId && (
           <Link href={`/chat/${chatId}?itemTitle=${encodeURIComponent(item.title)}&itemId=${item.id}&reporterEmail=${item.userEmail}`}>
             <Button size="sm" variant="outline">
