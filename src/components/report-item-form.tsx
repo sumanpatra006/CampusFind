@@ -97,7 +97,7 @@ export default function ReportItemForm() {
       toast({
         variant: 'destructive',
         title: 'Suggestion Failed',
-        description: 'Could not suggest a category at this time.',
+        description: 'Could not suggest a category at this time. Make sure you have set up your GEMINI_API_KEY.',
       });
     } finally {
       setIsSuggesting(false);
@@ -119,8 +119,11 @@ export default function ReportItemForm() {
         imageUrl = await getDownloadURL(snapshot.ref);
       }
 
+      // Prepare data for Firestore, removing the raw image FileList
+      const { image, ...itemData } = data;
+
       await addDoc(collection(db, 'items'), {
-        ...data,
+        ...itemData,
         imageUrl,
         userEmail: user.email,
         userName: user.displayName,
