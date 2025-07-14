@@ -8,10 +8,11 @@ import type { Chat } from '@/lib/types';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Header from '@/components/header';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { formatDistanceToNow } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquareText } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function ChatsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -65,6 +66,7 @@ export default function ChatsPage() {
                 {chats.map(chat => {
                   const otherUserEmail = chat.participants.find(p => p !== user?.email);
                   const lastMessageDate = chat.lastMessageTimestamp?.toDate ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true }) : '';
+                  const isUnread = chat.seenBy && !chat.seenBy.includes(user?.email || '');
 
                   return (
                     <Link href={`/chat/${chat.id}`} key={chat.id}>
@@ -76,14 +78,15 @@ export default function ChatsPage() {
                                 </Avatar>
                                 <div className="flex-grow">
                                 <p className="font-semibold">{chat.itemTitle}</p>
-                                <p className="text-sm text-muted-foreground truncate max-w-md">
+                                <p className={cn("text-sm text-muted-foreground truncate max-w-md", isUnread && "font-bold text-foreground")}>
                                     {chat.lastMessageSender === user?.email && 'You: '}
                                     {chat.lastMessage || 'No messages yet.'}
                                 </p>
                                 </div>
                             </div>
-                            <div className="text-right text-xs text-muted-foreground">
+                            <div className="text-right text-xs text-muted-foreground flex flex-col items-end gap-2">
                                 <span>{lastMessageDate}</span>
+                                {isUnread && <div className="h-2.5 w-2.5 rounded-full bg-accent" />}
                             </div>
                         </div>
                       </div>

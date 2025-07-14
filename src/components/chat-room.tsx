@@ -11,6 +11,8 @@ import {
   doc,
   setDoc,
   getDoc,
+  arrayUnion,
+  updateDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
@@ -56,6 +58,12 @@ export default function ChatRoom({
   useEffect(() => {
     const chatDocRef = doc(db, 'chats', chatId);
 
+    const markAsRead = async () => {
+        await updateDoc(chatDocRef, {
+            seenBy: arrayUnion(currentUserEmail)
+        });
+    }
+
     const setupChat = async () => {
         setLoading(true);
         const docSnap = await getDoc(chatDocRef);
@@ -69,6 +77,7 @@ export default function ChatRoom({
                     itemTitle: newItemTitle,
                     createdAt: serverTimestamp(),
                     lastMessageTimestamp: serverTimestamp(),
+                    seenBy: [],
                 });
                 setItemTitle(newItemTitle);
             } else {
@@ -77,10 +86,13 @@ export default function ChatRoom({
                 return;
             }
         } else {
-            // Chat exists, get its title
+            // Chat exists, get its title and mark as read
             const chatData = docSnap.data();
             if (!itemTitle) {
                 setItemTitle(chatData.itemTitle);
+            }
+            if (chatData.seenBy && !chatData.seenBy.includes(currentUserEmail)) {
+                markAsRead();
             }
         }
 
@@ -93,6 +105,8 @@ export default function ChatRoom({
           } as Message));
           setMessages(messagesData);
           setLoading(false);
+          // Mark as read whenever new messages arrive and user is in the room
+          markAsRead();
         }, (error) => {
           console.error("Error fetching messages:", error);
           toast({ variant: 'destructive', title: 'Error', description: 'Could not load messages.'});
@@ -123,12 +137,13 @@ export default function ChatRoom({
         timestamp: serverTimestamp(),
       });
 
-      // Update the last message on the chat document
+      // Update the last message on the chat document and mark as unread for other user
       const chatDocRef = doc(db, 'chats', chatId);
       await setDoc(chatDocRef, {
         lastMessage: newMessage,
         lastMessageTimestamp: serverTimestamp(),
         lastMessageSender: currentUserEmail,
+        seenBy: [currentUserEmail], // Reset seenBy to only the sender
       }, { merge: true });
 
       setNewMessage('');
