@@ -35,6 +35,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error signing in with Google', error);
+      // After a sign-in attempt, reset the tenantId to avoid side-effects.
+      auth.tenantId = null;
     }
   };
 
