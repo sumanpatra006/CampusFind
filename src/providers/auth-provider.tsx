@@ -29,8 +29,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const provider = new GoogleAuthProvider();
     try {
       // Explicitly set the authDomain to prevent "unauthorized-domain" errors
-      // in certain development environments.
-      auth.tenantId = null; // Ensure we are not in a multi-tenant context
+      // in certain development environments. This is a robust way to ensure
+      // Firebase knows which domain to use for the redirect.
+      auth.authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN!;
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error signing in with Google', error);
