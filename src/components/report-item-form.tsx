@@ -32,6 +32,8 @@ import { useToast } from '@/hooks/use-toast';
 import { PlusCircle, Sparkles } from 'lucide-react';
 import { suggestCategory } from '@/ai/flows/suggest-category';
 import Image from 'next/image';
+import imageCompression from 'browser-image-compression';
+
 
 const itemSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
@@ -114,12 +116,20 @@ export default function ReportItemForm() {
       let imageUrl = '';
       if (data.image && data.image.length > 0) {
         const file = data.image[0];
-        const storageRef = ref(storage, `items/${Date.now()}_${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
+        
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        }
+        
+        const compressedFile = await imageCompression(file, options);
+        
+        const storageRef = ref(storage, `items/${Date.now()}_${compressedFile.name}`);
+        const snapshot = await uploadBytes(storageRef, compressedFile);
         imageUrl = await getDownloadURL(snapshot.ref);
       }
 
-      // Prepare data for Firestore, removing the raw image FileList
       const { image, ...itemData } = data;
 
       await addDoc(collection(db, 'items'), {
