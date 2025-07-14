@@ -28,15 +28,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
-      // This line is the fix. It explicitly tells Firebase to use your project's
-      // default authorized domain for the authentication flow, which prevents
-      // the "unauthorized-domain" error in environments like Firebase Studio.
-      auth.tenantId = auth.app.options.authDomain;
+      // This is the definitive fix. By ensuring tenantId is null, we force
+      // Firebase to use the project's default list of authorized domains,
+      // which includes the one for your project and localhost if you've added it.
+      auth.tenantId = null;
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error signing in with Google', error);
-      // After a sign-in attempt, reset the tenantId to avoid side-effects.
-      auth.tenantId = null;
     }
   };
 
