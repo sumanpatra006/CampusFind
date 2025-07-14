@@ -5,16 +5,26 @@ import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from './ui/button';
-import { Mail } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
+import { useAuth } from '@/providers/auth-provider';
+import Link from 'next/link';
 
 interface ItemCardProps {
   item: Item;
 }
 
 export default function ItemCard({ item }: ItemCardProps) {
+  const { user } = useAuth();
   const timestamp = item.timestamp?.toDate ? item.timestamp.toDate() : new Date();
 
-  const mailtoLink = `mailto:${item.userEmail}?subject=Re: ${item.status === 'lost' ? 'Lost' : 'Found'} Item - "${item.title}"`;
+  // Create a deterministic chat ID from the two user emails and the item ID
+  const getChatId = () => {
+    if (!user) return null;
+    const emails = [user.email!, item.userEmail].sort();
+    return `${emails[0]}-${emails[1]}-${item.id}`;
+  };
+
+  const chatId = getChatId();
 
   return (
     <Card className="flex flex-col overflow-hidden transition-shadow hover:shadow-lg">
@@ -55,12 +65,14 @@ export default function ItemCard({ item }: ItemCardProps) {
           <span>Reported by {item.userName || item.userEmail}</span>
           <span>{formatDistanceToNow(timestamp, { addSuffix: true })}</span>
         </div>
-        <a href={mailtoLink}>
-          <Button size="sm" variant="outline">
-            <Mail className="mr-2 h-4 w-4" />
-            Contact Reporter
-          </Button>
-        </a>
+        {user && user.email !== item.userEmail && chatId && (
+          <Link href={`/chat/${chatId}?itemTitle=${encodeURIComponent(item.title)}&itemId=${item.id}&reporterEmail=${item.userEmail}`}>
+            <Button size="sm" variant="outline">
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Contact Reporter
+            </Button>
+          </Link>
+        )}
       </CardFooter>
     </Card>
   );
