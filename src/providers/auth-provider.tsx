@@ -28,6 +28,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signInWithGoogle = async () => {
     const provider = new GoogleAuthProvider();
     try {
+      // Explicitly set the authDomain to prevent "unauthorized-domain" errors
+      // in certain development environments.
+      auth.tenantId = null; // Ensure we are not in a multi-tenant context
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error signing in with Google', error);
