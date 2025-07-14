@@ -11,9 +11,6 @@ import {
   doc,
   setDoc,
   getDoc,
-  where,
-  getDocs,
-  limit,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Message } from '@/lib/types';
@@ -24,6 +21,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card'
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
+import { Skeleton } from './ui/skeleton';
 
 interface ChatRoomProps {
   chatId: string;
@@ -42,8 +40,8 @@ export default function ChatRoom({
 }: ChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [chatExists, setChatExists] = useState(true);
   const [itemTitle, setItemTitle] = useState(newItemTitle);
+  const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -58,46 +56,59 @@ export default function ChatRoom({
   useEffect(() => {
     const chatDocRef = doc(db, 'chats', chatId);
 
-    const checkAndCreateChat = async () => {
+    const setupChat = async () => {
+        setLoading(true);
         const docSnap = await getDoc(chatDocRef);
+        
         if (!docSnap.exists()) {
-            if (newItemId && newItemTitle && newReporterEmail) {
-                // Create the chat document
+            if (newItemId && newItemTitle && newReporterEmail && newReporterEmail !== currentUserEmail) {
+                // Create the chat document if it doesn't exist
                 await setDoc(chatDocRef, {
                     participants: [currentUserEmail, newReporterEmail],
                     itemId: newItemId,
                     itemTitle: newItemTitle,
                     createdAt: serverTimestamp(),
-                    lastMessage: 'Chat started.',
                     lastMessageTimestamp: serverTimestamp(),
-                    lastMessageSender: currentUserEmail,
                 });
-                setChatExists(true);
+                setItemTitle(newItemTitle);
             } else {
-                setChatExists(false);
+                // Can't create chat, missing info or user is chatting with themselves
+                setLoading(false);
+                return;
             }
         } else {
+            // Chat exists, get its title
             const chatData = docSnap.data();
             if (!itemTitle) {
                 setItemTitle(chatData.itemTitle);
             }
         }
+
+        const messagesQuery = query(collection(db, 'chats', chatId, 'messages'), orderBy('timestamp', 'asc'));
+
+        const unsubscribe = onSnapshot(messagesQuery, (snapshot) => {
+          const messagesData = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          } as Message));
+          setMessages(messagesData);
+          setLoading(false);
+        }, (error) => {
+          console.error("Error fetching messages:", error);
+          toast({ variant: 'destructive', title: 'Error', description: 'Could not load messages.'});
+          setLoading(false);
+        });
+
+        return unsubscribe;
     };
 
-    checkAndCreateChat();
+    const unsubscribePromise = setupChat();
 
-    const q = query(collection(db, 'chats', chatId, 'messages'), orderBy('timestamp', 'asc'));
+    return () => {
+        unsubscribePromise.then(unsubscribe => unsubscribe && unsubscribe());
+    };
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const messagesData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Message));
-      setMessages(messagesData);
-    });
-
-    return () => unsubscribe();
-  }, [chatId, currentUserEmail, newItemId, newItemTitle, newReporterEmail, itemTitle]);
+  }, [chatId, currentUserEmail, newItemId, newItemTitle, newReporterEmail, itemTitle, toast]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -131,8 +142,22 @@ export default function ChatRoom({
     }
   };
 
-  if (!chatExists) {
-      return <div className="text-center p-8">Chat not found or you do not have permission to view it.</div>
+  if (loading) {
+      return (
+         <Card className="h-full flex flex-col border-0 md:border rounded-none md:rounded-lg">
+            <CardHeader className="border-b">
+                <Skeleton className="h-7 w-48" />
+            </CardHeader>
+            <CardContent className="flex-grow p-4 space-y-4">
+                <Skeleton className="h-10 w-3/4" />
+                <Skeleton className="h-10 w-1/2 ml-auto" />
+                <Skeleton className="h-12 w-3/4" />
+            </CardContent>
+             <CardFooter className="border-t pt-6">
+                <Skeleton className="h-10 w-full" />
+            </CardFooter>
+         </Card>
+      )
   }
 
   return (
