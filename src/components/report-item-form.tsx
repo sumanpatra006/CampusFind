@@ -118,8 +118,8 @@ export default function ReportItemForm() {
         const file = data.image[0];
         
         const options = {
-          maxSizeMB: 1,
-          maxWidthOrHeight: 1920,
+          maxSizeMB: 0.5,
+          maxWidthOrHeight: 1024,
           useWebWorker: true,
         }
         
